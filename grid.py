@@ -5,7 +5,7 @@ import numpy as np
 
 
 class TetrisObstacle:
-    """ Common interface """
+    """ Common interface for Tetris obstacles """
     fill_cell = (4, 3)
 
     @classmethod
@@ -154,6 +154,8 @@ class Grid:
         self.arrays = np.reshape(self.arrays, (100, 100))
 
     def add_tetris_obstacles(self, fig_num=5):
+        """ Adding randomly chosen Tetris obstacles to the generated and shuffled grid
+        """
         calc_fill_indexes = []
 
         h, w = self.arrays.shape
@@ -170,7 +172,6 @@ class Grid:
 
         figures = TetrisObstacle.__subclasses__()
         place_figured = [np.random.choice(figures) for _ in range(fig_num)]
-        res = []
         for figure in place_figured:
             start_point = np.random.choice(len(calc_fill_indexes))
 
@@ -178,12 +179,12 @@ class Grid:
                 self.arrays[coordinate] = 100
 
     def find_easy_path(self, start: Tuple[int, int], finish: Tuple[int, int]):
-        frontier = PriorityQueue()
-        frontier.put((self.arrays[start], start, (start,)))
+        variants_queue = PriorityQueue()
+        variants_queue.put((self.arrays[start], start, (start,)))
         cost_so_far = {start: self.arrays[start]}
 
-        while not frontier.empty():
-            cur_prior, current, path = frontier.get()
+        while not variants_queue.empty():
+            cur_prior, current, path = variants_queue.get()
 
             if current == finish:
                 break
@@ -196,19 +197,21 @@ class Grid:
 
                 if next_cell not in cost_so_far or new_cost < cost_so_far[next_cell]:
                     cost_so_far[next_cell] = new_cost
-                    priority = new_cost + self.heuristic(finish, next_cell)
-                    frontier.put((priority, next_cell, path + (next_cell,)))
+                    priority = new_cost + self.get_distance(finish, next_cell)
+                    variants_queue.put((priority, next_cell, path + (next_cell,)))
 
         return path
 
     @staticmethod
-    def heuristic(p_a: Tuple[int, int], p_b: Tuple[int, int]):
+    def get_distance(p_a: Tuple[int, int], p_b: Tuple[int, int]):
         return abs(p_a[0] - p_b[0]) + \
                abs(p_a[1] - p_b[1])
 
     def find_neighbors(self, point: Tuple[int, int]):
         cur_x, cur_y = point
         return [
-            (x, y) for x, y in [(cur_x, cur_y + 1), (cur_x - 1, cur_y), (cur_x, cur_y - 1), (cur_x + 1, cur_y)]
-            if 0 <= x < self.arrays.shape[0] and 0 <= y < self.arrays.shape[1]
+            (x, y) for x, y in [
+                (cur_x, cur_y + 1), (cur_x - 1, cur_y),
+                (cur_x, cur_y - 1), (cur_x + 1, cur_y)
+            ] if 0 <= x < self.arrays.shape[0] and 0 <= y < self.arrays.shape[1]
         ]
